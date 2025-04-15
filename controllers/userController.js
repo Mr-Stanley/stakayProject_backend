@@ -1,7 +1,6 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
 
 const userController = { async register (req, res)  {
         const { username, email, password, role } = req.body;
@@ -64,6 +63,26 @@ const userController = { async register (req, res)  {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   },
-};
+
+
+async getUserProfile (req, res) {
+    try {
+      
+      const user = await User.findById(req.user.id).select('-password');
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.json({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+    },
+  };
 
     module.exports = userController;
