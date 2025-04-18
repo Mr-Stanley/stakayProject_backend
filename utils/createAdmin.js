@@ -5,11 +5,10 @@ const jwt = require('jsonwebtoken');
 const createAdmin = async () => {
     const existingAdmin = await User.findOne({ email: "admin@example.com" });
     if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash("admin081", 10); 
       const adminUser = new User({
         username: "Admin",
         email: "admin@example.com",
-        password: hashedPassword,
+        password: "admin081",
         role: "admin"
       });
       await adminUser.save();

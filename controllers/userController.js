@@ -3,12 +3,16 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const userController = { async register (req, res)  {
-        const { username, email, password, role } = req.body;
+        const { username, email, password } = req.body;
         try {
 
         if (!username || !email || !password) {
           return res.status(400).json({ message: 'username, email, and password are required' });
         }
+
+        if (req.body.role && req.body.role === 'admin') {
+          return res.status(403).json({ message: 'Cannot register as admin' });
+      }
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
