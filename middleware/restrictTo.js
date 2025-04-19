@@ -6,5 +6,6 @@ const restrictTo = (...roles) => {
       next();
     };
   };
+
   
   module.exports = restrictTo;

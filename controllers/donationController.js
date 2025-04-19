@@ -5,7 +5,9 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const donationController = {
   async createDonation(req, res) {
     try {
-      const { type, amount, foodItems, charityId } = req.body;
+      const { type, amount, foodItems, charityId, deliveryAddress, paymentWallet } = req.body;
+      const userId = req.user.id; // Assuming you have user ID from the token
+      
       if (!type || (type === 'money' && !amount) || (type === 'food' && (!foodItems || !foodItems.length))) {
         return res.status(400).json({ message: 'Type, and amount (for money) or foodItems (for food) are required' });
       }

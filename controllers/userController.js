@@ -2,8 +2,8 @@ const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const userController = { async register (req, res)  {
-        const { username, email, password } = req.body;
+const userController = { register : async (req, res) => {
+        const { username, email, password, role } = req.body;
         try {
 
         if (!username || !email || !password) {
@@ -38,7 +38,7 @@ const userController = { async register (req, res)  {
     },
     
 
-    async login (req, res) {
+    login : async (req, res) => {
         const { email, password } = req.body;
     try {
       if (!email || !password) {
@@ -69,7 +69,7 @@ const userController = { async register (req, res)  {
   },
 
 
-async getUserProfile (req, res) {
+getUserProfile : async (req, res) => {
     try {
       
       const user = await User.findById(req.user.id).select('-password');

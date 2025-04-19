@@ -9,7 +9,8 @@ const createAdmin = async () => {
         username: "Admin",
         email: "admin@example.com",
         password: "admin081",
-        role: "admin"
+        role: "admin",
+        token: ''
       });
       await adminUser.save();
       console.log("Admin user created");
@@ -50,7 +51,7 @@ const createAdmin = async () => {
         process.env.JWT_SECRET || 'your_jwt_secret', // Use .env in production
         { expiresIn: '20m' }
     );
-      return res.status(200).json({ message: "Admin logged in successfully", user });
+      return res.status(200).json({ message: "Admin logged in successfully", token, user: { id: user._id, email: user.email, role: user.role } });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Server error" });

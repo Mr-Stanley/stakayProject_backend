@@ -6,10 +6,12 @@ const {createAdmin} = require("./utils/createAdmin");
 
 
 
+
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const charityRoutes = require('./routes/charityRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 8000; 
@@ -34,3 +36,4 @@ async function startServer() {
 }
 createAdmin();
 startServer();
+
