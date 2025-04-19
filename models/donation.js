@@ -27,7 +27,7 @@ const donationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'delivered'],
+    enum: ['pending', 'approved', 'rejected', 'delivered', 'completed'],
     default: function () { return this.type === 'money' ? 'completed' : 'pending'; },
   },
   deliveryAddress: {

@@ -55,7 +55,7 @@ const userController = { register : async (req, res) => {
       const accessToken = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
-        { expiresIn: '15m' }
+        { expiresIn: '60d' }
       );
       res.status(200).json({
         message: 'Login successful',
