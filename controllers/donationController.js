@@ -1,17 +1,20 @@
 const Donation = require('../models/donation');
 const Charity = require('../models/charity');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Transaction = require('../models/Transaction');
+const axios = require('axios');
 
 const donationController = {
   async createDonation(req, res) {
     try {
       const { type, amount, foodItems, charityId, deliveryAddress, paymentWallet } = req.body;
-      const userId = req.user.id; // Assuming you have user ID from the token
-      
+      const userId = req.user.id; // From JWT middleware
+
+      // Validate input
       if (!type || (type === 'money' && !amount) || (type === 'food' && (!foodItems || !foodItems.length))) {
         return res.status(400).json({ message: 'Type, and amount (for money) or foodItems (for food) are required' });
       }
 
+      // Validate charity if provided
       let charity = null;
       if (charityId) {
         charity = await Charity.findById(charityId);
@@ -19,53 +22,69 @@ const donationController = {
           return res.status(404).json({ message: 'Charity not found' });
         }
       }
+
+      // Base donation data
       const donationData = {
-        user: req.user.id,
+        user: userId,
         type,
         amount: type === 'money' ? amount : undefined,
         foodItems: type === 'food' ? foodItems : undefined,
         charity: charity ? charity._id : null,
+        status: type === 'money' ? 'pending' : 'pending', // Money donations wait for payment confirmation
       };
 
       if (type === 'money') {
-        // Create Stripe Checkout session
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: 'usd',
-                product_data: {
-                  name: charity ? `Donation to ${charity.name}` : 'Donation to StaKay FoodBank',
-                },
-                unit_amount: amount * 100, // Stripe expects cents
-              },
-              quantity: 1,
+        // Initialize Paystack transaction
+        const paystackResponse = await axios.post(
+          'http://localhost:8000/api/paystack/initialize',
+          {
+            email: req.user.email || 'test@example.com', // Use user email from JWT or fallback
+            amount, // Amount in Naira
+          },
+          {
+            headers: {
+              Authorization: req.header('Authorization'), // Pass JWT
+              'Content-Type': 'application/json',
             },
-          ],
-          mode: 'payment',
-          success_url: 'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
-          cancel_url: 'http://localhost:3000/cancel',
-        });
+          }
+        );
 
-        donationData.paymentSessionId = session.id;
-        donationData.status = 'completed'; // No approval needed
+        if (paystackResponse.data.status !== 'success') {
+          return res.status(500).json({ message: 'Failed to initialize Paystack transaction' });
+        }
+
+        const { reference, authorization_url } = paystackResponse.data.data;
+
+        // Link Paystack reference to donation
+        donationData.paystackReference = reference;
       }
 
-      const donation = await Donation.create({
-        user: req.user.id,
-        type,
-        amount: type === 'money' ? amount : undefined,
-        foodItems: type === 'food' ? foodItems : undefined,
-        charity: charity ? charity._id : null,
-      });
+      // Create donation
+      const donation = await Donation.create(donationData);
 
+      // For monetary donations, return Paystack authorization URL
+      if (type === 'money') {
+        return res.status(201).json({
+          message: 'Donation initialized successfully',
+          donation: {
+            id: donation._id,
+            type: donation.type,
+            amount: donation.amount,
+            charity: donation.charity,
+            status: donation.status,
+            paystackReference: donation.paystackReference,
+            authorization_url: paystackResponse.data.data.authorization_url,
+            createdAt: donation.createdAt,
+          },
+        });
+      }
+
+      // For food donations
       res.status(201).json({
         message: 'Donation submitted successfully',
         donation: {
           id: donation._id,
           type: donation.type,
-          amount: donation.amount,
           foodItems: donation.foodItems,
           charity: donation.charity,
           status: donation.status,
@@ -94,6 +113,7 @@ const donationController = {
     try {
       const { id } = req.params;
       const { status, deliveryAddress, paymentWallet } = req.body;
+
       if (!['approved', 'rejected', 'delivered'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status' });
       }
@@ -103,12 +123,20 @@ const donationController = {
         return res.status(404).json({ message: 'Donation not found' });
       }
 
+      // For monetary donations, ensure payment is completed before approving
+      if (donation.type === 'money' && status === 'approved') {
+        const transaction = await Transaction.findOne({ reference: donation.paystackReference });
+        if (!transaction || transaction.status !== 'completed') {
+          return res.status(400).json({ message: 'Payment not completed' });
+        }
+      }
+
       donation.status = status;
       if (status === 'approved') {
         if (donation.type === 'money') {
-          donation.paymentWallet = paymentWallet || 'platform-wallet-address'; // Replace with your wallet
+          donation.paymentWallet = paymentWallet || 'platform-wallet-address';
         } else if (donation.type === 'food') {
-          donation.deliveryAddress = deliveryAddress || '123 Platform St, City'; // Replace with your address
+          donation.deliveryAddress = deliveryAddress || '123 Platform St, City';
         }
       }
 
@@ -125,6 +153,7 @@ const donationController = {
           status: donation.status,
           deliveryAddress: donation.deliveryAddress,
           paymentWallet: donation.paymentWallet,
+          paystackReference: donation.paystackReference,
         },
       });
     } catch (error) {
@@ -132,18 +161,7 @@ const donationController = {
       res.status(500).json({ message: 'Server error' });
     }
   },
-  async getAllDonations(req, res) {
-    try {
-      const donations = await Donation.find()
-        .populate('user', 'email firstName')
-        .populate('charity', 'name')
-        .sort({ createdAt: -1 });
-      res.json(donations);
-    } catch (error) {
-      console.error('Error fetching all donations:', error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  },
+
   async getAllDonations(req, res) {
     try {
       const donations = await Donation.find()
