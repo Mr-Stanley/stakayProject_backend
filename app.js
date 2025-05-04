@@ -19,11 +19,11 @@ const PORT = process.env.PORT || 8000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-}));
+ app.use(cors({
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  }));
 
 // Routes
 app.use('/api/user', userRoutes);
@@ -32,7 +32,7 @@ app.use('/api/donations', donationRoutes);
 app.use('/api/charities', charityRoutes);
 
 // Paystack Routes
-app.post('/api/paystack/initialize', authMiddleware, paystackController.initializeTransaction);
+app.post('/api/paystack/initialize',  paystackController.initializeTransaction);
 app.get('/api/paystack/verify', paystackController.verifyTransaction);
 app.post('/api/paystack/webhook', paystackController.handleWebhook);
 

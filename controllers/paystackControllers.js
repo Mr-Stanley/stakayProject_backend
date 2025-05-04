@@ -8,7 +8,7 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 // Initialize a transaction
 exports.initializeTransaction = async (req, res, next) => {
   try {
-    const { email, amount } = req.body;
+    const { email, amount, } = req.body;
 
     // Validate input
     if (!email || !amount) {
@@ -24,7 +24,7 @@ exports.initializeTransaction = async (req, res, next) => {
       {
         email,
         amount: amountInKobo,
-        callback_url: process.env.CALLBACK_URL || 'http://localhost:3000/payment/callback',
+        callback_url: process.env.CALLBACK_URL || 'http://localhost:5173/payment/callback',
       },
       {
         headers: {
